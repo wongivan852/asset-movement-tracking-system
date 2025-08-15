@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            <small class="text-muted">Asset Movement Tracking System</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Assets</h5>
+                        <h2>{{ total_assets }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Available</h5>
+                        <h2>{{ assets_available }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">In Transit</h5>
+                        <h2>{{ assets_in_transit }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-truck fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Overdue</h5>
+                        <h2>{{ overdue_movements }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <a href="{% url 'assets:create' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-plus me-2"></i>Add Asset
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <a href="{% url 'movements:create' %}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-truck me-2"></i>Create Movement
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <a href="{% url 'movements:stock_take_create' %}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-clipboard-check me-2"></i>Stock Take
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-2">
+                        <a href="{% url 'dashboard:reports' %}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-chart-bar me-2"></i>Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activities & Notifications -->
+<div class="row">
+    <!-- Recent Movements -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Movements
+                </h5>
+                <a href="{% url 'movements:list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_movements %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tracking #</th>
+                                <th>Asset</th>
+                                <th>From → To</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for movement in recent_movements %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'movements:detail' movement.id %}" class="text-decoration-none">
+                                        {{ movement.tracking_number }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{% url 'assets:detail' movement.asset.id %}" class="text-decoration-none">
+                                        {{ movement.asset.asset_id }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ movement.from_location.code }} → {{ movement.to_location.code }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if movement.status == 'acknowledged' %}success{% elif movement.status == 'in_transit' %}warning{% elif movement.status == 'pending' %}info{% else %}secondary{% endif %}">
+                                        {{ movement.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>{{ movement.created_at|date:"M d, H:i" }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">No recent movements found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alerts & Notifications -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bell me-2"></i>Alerts
+                </h5>
+                <a href="{% url 'dashboard:notifications' %}" class="btn btn-sm btn-outline-warning">View All</a>
+            </div>
+            <div class="card-body">
+                {% if overdue_movements > 0 %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>{{ overdue_movements }}</strong> overdue movement{{ overdue_movements|pluralize }}
+                </div>
+                {% endif %}
+                
+                {% if pending_acknowledgements > 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-clock me-2"></i>
+                    <strong>{{ pending_acknowledgements }}</strong> pending acknowledgement{{ pending_acknowledgements|pluralize }}
+                </div>
+                {% endif %}
+                
+                {% if overdue_movements == 0 and pending_acknowledgements == 0 %}
+                <p class="text-success text-center py-3">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                    All systems operational
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Stock Takes -->
+        {% if recent_stock_takes %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clipboard-check me-2"></i>Recent Stock Takes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for stock_take in recent_stock_takes %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>{{ stock_take.location.name }}</strong><br>
+                        <small class="text-muted">{{ stock_take.stock_take_id }}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-{% if stock_take.status == 'completed' %}success{% elif stock_take.status == 'in_progress' %}warning{% else %}info{% endif %}">
+                            {{ stock_take.get_status_display }}
+                        </span><br>
+                        <small class="text-muted">{{ stock_take.created_at|date:"M d" }}</small>
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr>{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Asset Status Chart -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Asset Status Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="assetStatusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Asset Status Chart
+const ctx = document.getElementById('assetStatusChart').getContext('2d');
+const assetStatusChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Available', 'In Transit', 'In Use', 'Maintenance'],
+        datasets: [{
+            data: [{{ assets_available }}, {{ assets_in_transit }}, {{ assets_in_use }}, {{ assets_maintenance }}],
+            backgroundColor: [
+                '#28a745',
+                '#ffc107',
+                '#007bff',
+                '#dc3545'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
