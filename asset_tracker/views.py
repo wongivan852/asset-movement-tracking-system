@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 def home(request):
     """Home page view - redirects to dashboard if logged in"""
     if request.user.is_authenticated:
-        return redirect('dashboard:home')
+        return redirect('dashboard:index')
     return render(request, 'home.html')
 
 

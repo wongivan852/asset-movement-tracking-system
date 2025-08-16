@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+
+{% block title %}Asset Movements - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-truck me-2"></i>Asset Movements</h2>
+            <a href="{% url 'movements:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Create Movement
+            </a>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="search" 
+                               placeholder="Search by tracking number, asset..." value="{{ request.GET.search }}">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">All Statuses</option>
+                            {% for status_value, status_label in statuses %}
+                                <option value="{{ status_value }}" 
+                                        {% if request.GET.status == status_value %}selected{% endif %}>
+                                    {{ status_label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="asset" 
+                               placeholder="Asset ID" value="{{ request.GET.asset }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Movements Table -->
+        <div class="card">
+            <div class="card-body">
+                {% if movements %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tracking #</th>
+                                <th>Asset</th>
+                                <th>Route</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Expected Arrival</th>
+                                <th>Initiated By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for movement in movements %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'movements:detail' movement.pk %}" class="text-decoration-none">
+                                        <strong>{{ movement.tracking_number }}</strong>
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ movement.created_at|date:"M d, Y" }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'assets:detail' movement.asset.pk %}" class="text-decoration-none">
+                                        {{ movement.asset.asset_id }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ movement.asset.name|truncatechars:30 }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-secondary me-2">{{ movement.from_location.code }}</span>
+                                        <i class="fas fa-arrow-right text-muted me-2"></i>
+                                        <span class="badge bg-info">{{ movement.to_location.code }}</span>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        {{ movement.from_location.name }} → {{ movement.to_location.name }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if movement.status == 'pending' %}
+                                        <span class="badge bg-warning">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'in_transit' %}
+                                        <span class="badge bg-primary">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'delivered' %}
+                                        <span class="badge bg-success">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'acknowledged' %}
+                                        <span class="badge bg-success">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'cancelled' %}
+                                        <span class="badge bg-danger">{{ movement.get_status_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ movement.get_status_display }}</span>
+                                    {% endif %}
+                                    
+                                    {% if movement.is_overdue %}
+                                        <br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Overdue</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if movement.priority == 'urgent' %}
+                                        <span class="badge bg-danger">{{ movement.get_priority_display }}</span>
+                                    {% elif movement.priority == 'high' %}
+                                        <span class="badge bg-warning">{{ movement.get_priority_display }}</span>
+                                    {% elif movement.priority == 'normal' %}
+                                        <span class="badge bg-info">{{ movement.get_priority_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ movement.get_priority_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if movement.expected_arrival_date %}
+                                        {{ movement.expected_arrival_date|date:"M d, Y" }}
+                                        <br>
+                                        <small class="text-muted">{{ movement.expected_arrival_date|date:"H:i" }}</small>
+                                        {% if movement.days_until_arrival < 0 %}
+                                            <br><small class="text-danger">{{ movement.days_until_arrival|floatformat:0 }} days late</small>
+                                        {% elif movement.days_until_arrival == 0 %}
+                                            <br><small class="text-warning">Due today</small>
+                                        {% elif movement.days_until_arrival <= 2 %}
+                                            <br><small class="text-warning">{{ movement.days_until_arrival }} days left</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Not set</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <i class="fas fa-user me-1"></i>{{ movement.initiated_by.get_full_name|default:movement.initiated_by.username }}
+                                    <br>
+                                    <small class="text-muted">{{ movement.created_at|timesince }} ago</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'movements:detail' movement.pk %}" 
+                                           class="btn btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if movement.status == 'pending' %}
+                                            <a href="{% url 'movements:cancel' movement.pk %}" 
+                                               class="btn btn-outline-danger" title="Cancel">
+                                                <i class="fas fa-times"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if movement.status == 'delivered' %}
+                                            <a href="{% url 'movements:acknowledge' movement.pk %}" 
+                                               class="btn btn-outline-success" title="Acknowledge">
+                                                <i class="fas fa-check"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Movements pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No movements found</h4>
+                    <p class="text-muted">
+                        {% if request.GET.search or request.GET.status or request.GET.asset %}
+                            Try adjusting your search filters.
+                        {% else %}
+                            Get started by creating your first asset movement.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'movements:create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Create First Movement
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table th {
+        border-top: none;
+        font-weight: 600;
+        background-color: #f8f9fa;
+    }
+    .badge {
+        font-size: 0.75em;
+    }
+    .btn-group-sm > .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    .text-danger {
+        font-weight: 500;
+    }
+    .text-warning {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}

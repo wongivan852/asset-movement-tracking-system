@@ -44,17 +44,17 @@ class MovementDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['acknowledgements'] = self.object.acknowledgements.select_related(
-            'acknowledged_by'
-        ).order_by('acknowledged_at')
+        try:
+            context['acknowledgement'] = self.object.acknowledgement
+        except MovementAcknowledgement.DoesNotExist:
+            context['acknowledgement'] = None
         return context
 
 
 class MovementCreateView(LoginRequiredMixin, CreateView):
     model = Movement
     template_name = 'movements/form.html'
-    fields = ['asset', 'from_location', 'to_location', 'movement_type', 
-              'reason', 'notes', 'expected_arrival']
+    fields = ['asset', 'from_location', 'to_location', 'reason', 'notes', 'expected_arrival_date', 'priority']
     
     def form_valid(self, form):
         form.instance.initiated_by = self.request.user
@@ -68,7 +68,7 @@ class MovementCreateView(LoginRequiredMixin, CreateView):
 class MovementUpdateView(LoginRequiredMixin, UpdateView):
     model = Movement
     template_name = 'movements/form.html'
-    fields = ['movement_type', 'reason', 'notes', 'expected_arrival', 'status']
+    fields = ['reason', 'notes', 'expected_arrival_date', 'priority', 'status']
     
     def form_valid(self, form):
         messages.success(self.request, 'Movement updated successfully!')
@@ -86,7 +86,7 @@ class StockTakeListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         return StockTake.objects.select_related(
-            'location', 'performed_by'
+            'location', 'conducted_by'
         ).order_by('-created_at')
 
 
@@ -109,7 +109,7 @@ class StockTakeCreateView(LoginRequiredMixin, CreateView):
     fields = ['location', 'notes']
     
     def form_valid(self, form):
-        form.instance.performed_by = self.request.user
+        form.instance.conducted_by = self.request.user
         messages.success(self.request, 'Stock take created successfully!')
         return super().form_valid(form)
     
@@ -133,3 +133,63 @@ class AcknowledgeMovementView(LoginRequiredMixin, UpdateView):
         movement.save()
         messages.success(self.request, 'Movement acknowledged successfully!')
         return redirect('movements:detail', pk=movement.pk)
+
+
+class CancelMovementView(LoginRequiredMixin, UpdateView):
+    model = Movement
+    template_name = 'movements/cancel.html'
+    fields = []
+    
+    def form_valid(self, form):
+        movement = self.get_object()
+        movement.status = 'cancelled'
+        movement.save()
+        messages.success(self.request, 'Movement cancelled successfully!')
+        return redirect('movements:detail', pk=movement.pk)
+
+
+class StartStockTakeView(LoginRequiredMixin, UpdateView):
+    model = StockTake
+    template_name = 'movements/stock_take_start.html'
+    fields = []
+    
+    def form_valid(self, form):
+        stock_take = self.get_object()
+        stock_take.status = 'in_progress'
+        stock_take.save()
+        messages.success(self.request, 'Stock take started successfully!')
+        return redirect('movements:stock_take_detail', pk=stock_take.pk)
+
+
+class CompleteStockTakeView(LoginRequiredMixin, UpdateView):
+    model = StockTake
+    template_name = 'movements/stock_take_complete.html'
+    fields = []
+    
+    def form_valid(self, form):
+        stock_take = self.get_object()
+        stock_take.status = 'completed'
+        stock_take.save()
+        messages.success(self.request, 'Stock take completed successfully!')
+        return redirect('movements:stock_take_detail', pk=stock_take.pk)
+
+
+class TrackMovementAPIView(LoginRequiredMixin, DetailView):
+    model = Movement
+    
+    def get_object(self, queryset=None):
+        tracking_number = self.kwargs.get('tracking_number')
+        return get_object_or_404(Movement, tracking_number=tracking_number)
+    
+    def get(self, request, *args, **kwargs):
+        movement = self.get_object()
+        data = {
+            'tracking_number': movement.tracking_number,
+            'status': movement.status,
+            'asset': movement.asset.asset_id,
+            'from_location': movement.from_location.name,
+            'to_location': movement.to_location.name,
+            'created_at': movement.created_at.isoformat(),
+            'expected_arrival': movement.expected_arrival_date.isoformat() if movement.expected_arrival_date else None,
+        }
+        return JsonResponse(data)
