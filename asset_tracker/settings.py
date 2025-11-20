@@ -38,12 +38,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+    'django.contrib.sites',  # Required for django-allauth
+
     # Third-party apps
     'crispy_forms',
     'crispy_bootstrap5',
     'django_bootstrap5',
-    
+
+    # SSO and API (Phase 1)
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.openid_connect',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'csp',
+
     # Local apps
     'accounts',
     'assets',
@@ -54,12 +65,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS - must be before CommonMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'csp.middleware.CSPMiddleware',  # Content Security Policy
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Required for django-allauth
 ]
 
 ROOT_URLCONF = 'asset_tracker.urls'
@@ -162,9 +176,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication
 AUTH_USER_MODEL = 'accounts.User'
-LOGIN_URL = 'accounts:login'
+LOGIN_URL = 'account_login'  # Changed for allauth
 LOGIN_REDIRECT_URL = 'dashboard:index'
-LOGOUT_REDIRECT_URL = 'accounts:login'
+LOGOUT_REDIRECT_URL = 'account_login'
+
+# Authentication Backends (Phase 1: SSO Integration)
+AUTHENTICATION_BACKENDS = [
+    # Django default (for admin/local accounts)
+    'django.contrib.auth.backends.ModelBackend',
+
+    # OAuth/OIDC authentication (for SSO)
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
 
 # Crispy Forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -179,7 +202,10 @@ BOOTSTRAP5 = {
 # Security Settings
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
+
+# X-Frame-Options: Modified for iframe embedding (Phase 1)
+# Changed from 'DENY' to 'SAMEORIGIN' to allow embedding in Integrated Business Platform
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 SECURE_REFERRER_POLICY = 'same-origin'
 
 # Production security settings (uncomment for HTTPS deployment)
@@ -227,5 +253,231 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'accounts': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
     },
 }
+
+# =============================================================================
+# PHASE 1: SSO INTEGRATION CONFIGURATION
+# =============================================================================
+
+# Django Sites Framework (Required for django-allauth)
+SITE_ID = 1
+
+# Django-allauth Configuration
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Can be 'mandatory', 'optional', or 'none'
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = False
+ACCOUNT_SESSION_REMEMBER = True
+
+# Social Account Configuration
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# OAuth 2.0 / OpenID Connect Provider Configuration
+# Configure your SSO provider details in .env file
+SOCIALACCOUNT_PROVIDERS = {
+    'openid_connect': {
+        'APPS': [
+            {
+                'provider_id': 'integrated_platform',
+                'name': 'Integrated Business Platform',
+                'client_id': config('OAUTH_CLIENT_ID', default=''),
+                'secret': config('OAUTH_CLIENT_SECRET', default=''),
+                'settings': {
+                    'server_url': config('OAUTH_SERVER_URL', default=''),
+                },
+            }
+        ],
+        'OAUTH_PKCE_ENABLED': True,  # Enable PKCE for enhanced security
+    }
+}
+
+# Alternative: Generic OAuth 2.0 Configuration (if OIDC not supported)
+# Uncomment and configure if your SSO provider doesn't support OIDC
+# SOCIALACCOUNT_PROVIDERS = {
+#     'oauth2': {
+#         'APPS': [
+#             {
+#                 'client_id': config('OAUTH_CLIENT_ID', default=''),
+#                 'secret': config('OAUTH_CLIENT_SECRET', default=''),
+#                 'key': '',
+#                 'settings': {
+#                     'authorize_url': config('OAUTH_AUTHORIZE_URL', default=''),
+#                     'access_token_url': config('OAUTH_TOKEN_URL', default=''),
+#                     'profile_url': config('OAUTH_PROFILE_URL', default=''),
+#                 }
+#             }
+#         ]
+#     }
+# }
+
+# Redirect URLs after authentication
+ACCOUNT_LOGIN_REDIRECT_URL = LOGIN_REDIRECT_URL
+ACCOUNT_LOGOUT_REDIRECT_URL = LOGOUT_REDIRECT_URL
+
+# =============================================================================
+# CORS CONFIGURATION (Phase 1)
+# =============================================================================
+
+# Allow requests from Integrated Business Platform
+CORS_ALLOWED_ORIGINS = [
+    config('PLATFORM_URL', default='https://integrated-platform.company.com'),
+]
+
+# Allow development origins if DEBUG is True
+if DEBUG:
+    CORS_ALLOWED_ORIGINS += [
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:8080',
+    ]
+
+# Allow credentials (cookies, auth headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# Allowed HTTP methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Allowed headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Cache preflight requests for 1 hour
+CORS_PREFLIGHT_MAX_AGE = 3600
+
+# =============================================================================
+# CONTENT SECURITY POLICY (Phase 1)
+# =============================================================================
+
+# CSP Configuration for iframe embedding and security
+CSP_DEFAULT_SRC = ["'self'"]
+
+CSP_SCRIPT_SRC = [
+    "'self'",
+    "'unsafe-inline'",  # Required for Bootstrap and inline scripts
+    "https://cdn.jsdelivr.net",
+    "https://cdnjs.cloudflare.com",
+]
+
+CSP_STYLE_SRC = [
+    "'self'",
+    "'unsafe-inline'",  # Required for Bootstrap and inline styles
+    "https://cdn.jsdelivr.net",
+    "https://cdnjs.cloudflare.com",
+]
+
+CSP_IMG_SRC = [
+    "'self'",
+    "data:",
+    "https:",
+]
+
+CSP_FONT_SRC = [
+    "'self'",
+    "https://cdnjs.cloudflare.com",
+]
+
+CSP_CONNECT_SRC = [
+    "'self'",
+]
+
+# Allow embedding from Integrated Business Platform
+CSP_FRAME_ANCESTORS = [
+    "'self'",
+    config('PLATFORM_URL', default='https://integrated-platform.company.com'),
+]
+
+# =============================================================================
+# DJANGO REST FRAMEWORK CONFIGURATION (Phase 1)
+# =============================================================================
+
+from datetime import timedelta
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
+    'DATE_FORMAT': '%Y-%m-%d',
+}
+
+# Add BrowsableAPIRenderer for development
+if DEBUG:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    )
+
+# =============================================================================
+# JWT CONFIGURATION (Phase 1)
+# =============================================================================
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+
+    'JTI_CLAIM': 'jti',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+}
+
+# =============================================================================
+# END OF PHASE 1 CONFIGURATION
+# =============================================================================
