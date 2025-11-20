@@ -27,7 +27,20 @@
                             </div>
                             {% endfor %}
                         {% endif %}
-                        
+
+                        <!-- SSO Login Option -->
+                        {% load static %}
+                        {% if settings.SSO_ENABLED %}
+                        <div class="d-grid mb-3">
+                            <a href="{% url 'accounts:sso_login' %}" class="btn btn-success btn-lg">
+                                <i class="fas fa-shield-alt me-2"></i>Login with SSO
+                            </a>
+                        </div>
+                        <div class="text-center mb-3">
+                            <small class="text-muted">— OR —</small>
+                        </div>
+                        {% endif %}
+
                         <form method="post">
                             {% csrf_token %}
                             

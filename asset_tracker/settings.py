@@ -38,12 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # Third-party apps
     'crispy_forms',
     'crispy_bootstrap5',
     'django_bootstrap5',
-    
+    'corsheaders',
+
     # Local apps
     'accounts',
     'assets',
@@ -54,7 +55,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -75,6 +78,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.context_processors.sso_settings',
             ],
         },
     },
@@ -229,3 +233,113 @@ LOGGING = {
         },
     },
 }
+
+# ========================================
+# SSO Configuration
+# ========================================
+
+# SSO General Settings
+SSO_ENABLED = config('SSO_ENABLED', default=False, cast=bool)
+SSO_TYPE = config('SSO_TYPE', default='SAML')  # SAML, OAUTH, or LDAP
+ALLOW_LOCAL_AUTH = config('ALLOW_LOCAL_AUTH', default=True, cast=bool)
+SSO_UPDATE_USER_DATA = config('SSO_UPDATE_USER_DATA', default=True, cast=bool)
+SSO_JIT_PROVISIONING = config('SSO_JIT_PROVISIONING', default=True, cast=bool)
+SSO_CREATE_UNKNOWN_USER = config('SSO_CREATE_UNKNOWN_USER', default=True, cast=bool)
+
+# Site URL for SSO callbacks
+SITE_URL = config('SITE_URL', default='http://localhost:8000')
+
+# Authentication Backends
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
+
+if SSO_ENABLED:
+    if SSO_TYPE == 'SAML':
+        AUTHENTICATION_BACKENDS.insert(0, 'accounts.sso_backends.SAMLBackend')
+
+        # SAML Configuration
+        SAML_ENABLED = True
+        SAML_ENTITY_ID = config('SAML_ENTITY_ID', default='')
+        SAML_IDP_ENTITY_ID = config('SAML_IDP_ENTITY_ID', default='')
+        SAML_SSO_URL = config('SAML_SSO_URL', default='')
+        SAML_SLO_URL = config('SAML_SLO_URL', default='')
+        SAML_X509_CERT = config('SAML_X509_CERT', default='')
+
+        # SAML Attribute Mapping
+        SAML_ATTRIBUTE_MAPPING_EMAIL = config('SAML_ATTRIBUTE_MAPPING_EMAIL', default='email')
+        SAML_ATTRIBUTE_MAPPING_USERNAME = config('SAML_ATTRIBUTE_MAPPING_USERNAME', default='username')
+        SAML_ATTRIBUTE_MAPPING_FIRST_NAME = config('SAML_ATTRIBUTE_MAPPING_FIRST_NAME', default='firstName')
+        SAML_ATTRIBUTE_MAPPING_LAST_NAME = config('SAML_ATTRIBUTE_MAPPING_LAST_NAME', default='lastName')
+
+    elif SSO_TYPE == 'OAUTH':
+        AUTHENTICATION_BACKENDS.insert(0, 'accounts.sso_backends.OAuthBackend')
+
+        # OAuth Configuration
+        OAUTH_ENABLED = config('OAUTH_ENABLED', default=False, cast=bool)
+        OAUTH_PROVIDER = config('OAUTH_PROVIDER', default='')
+        OAUTH_CLIENT_ID = config('OAUTH_CLIENT_ID', default='')
+        OAUTH_CLIENT_SECRET = config('OAUTH_CLIENT_SECRET', default='')
+        OAUTH_AUTHORIZATION_URL = config('OAUTH_AUTHORIZATION_URL', default='')
+        OAUTH_TOKEN_URL = config('OAUTH_TOKEN_URL', default='')
+        OAUTH_USERINFO_URL = config('OAUTH_USERINFO_URL', default='')
+        OAUTH_SCOPE = config('OAUTH_SCOPE', default='openid profile email')
+        OAUTH_REDIRECT_URI = config('OAUTH_REDIRECT_URI', default='')
+
+    elif SSO_TYPE == 'LDAP':
+        try:
+            import ldap
+            from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
+
+            AUTHENTICATION_BACKENDS.insert(0, 'accounts.sso_backends.LDAPBackend')
+
+            # LDAP Configuration
+            LDAP_ENABLED = config('LDAP_ENABLED', default=False, cast=bool)
+            AUTH_LDAP_SERVER_URI = config('LDAP_SERVER_URI', default='')
+            AUTH_LDAP_BIND_DN = config('LDAP_BIND_DN', default='')
+            AUTH_LDAP_BIND_PASSWORD = config('LDAP_BIND_PASSWORD', default='')
+
+            # User Search
+            AUTH_LDAP_USER_SEARCH = LDAPSearch(
+                config('LDAP_USER_SEARCH_BASE', default=''),
+                ldap.SCOPE_SUBTREE,
+                config('LDAP_USER_SEARCH_FILTER', default='(sAMAccountName=%(user)s)')
+            )
+
+            # User Attribute Mapping
+            AUTH_LDAP_USER_ATTR_MAP = {
+                'first_name': config('LDAP_ATTR_FIRST_NAME', default='givenName'),
+                'last_name': config('LDAP_ATTR_LAST_NAME', default='sn'),
+                'email': config('LDAP_ATTR_EMAIL', default='mail'),
+            }
+
+            # Group Search (optional)
+            if config('LDAP_GROUP_SEARCH_BASE', default=''):
+                AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+                    config('LDAP_GROUP_SEARCH_BASE', default=''),
+                    ldap.SCOPE_SUBTREE,
+                    "(objectClass=group)"
+                )
+                AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
+
+            # TLS/SSL Settings
+            AUTH_LDAP_START_TLS = config('LDAP_USE_TLS', default=False, cast=bool)
+
+            # Always update user on login
+            AUTH_LDAP_ALWAYS_UPDATE_USER = True
+
+        except ImportError:
+            pass  # LDAP libraries not installed
+
+# Role Mapping Configuration
+SSO_ROLE_MAPPING_ENABLED = config('SSO_ROLE_MAPPING_ENABLED', default=False, cast=bool)
+SSO_ADMIN_GROUPS = config('SSO_ADMIN_GROUPS', default='')
+SSO_MANAGER_GROUPS = config('SSO_MANAGER_GROUPS', default='')
+SSO_STAFF_GROUPS = config('SSO_STAFF_GROUPS', default='')
+SSO_DEFAULT_ROLE = config('SSO_DEFAULT_ROLE', default='personnel')
+
+# CORS Configuration for SSO
+if SSO_ENABLED:
+    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+    CORS_ALLOW_CREDENTIALS = True
+
+# WhiteNoise for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

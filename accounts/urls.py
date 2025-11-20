@@ -1,11 +1,24 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from . import sso_views
 
 app_name = 'accounts'
 
 urlpatterns = [
-    # Authentication URLs
+    # SSO Authentication URLs
+    path('sso/login/', sso_views.sso_login, name='sso_login'),
+    path('sso/logout/', sso_views.sso_logout, name='sso_logout'),
+
+    # SAML URLs
+    path('sso/saml/acs/', sso_views.saml_acs, name='sso_saml_acs'),
+    path('sso/saml/sls/', sso_views.saml_sls, name='sso_saml_sls'),
+    path('sso/saml/metadata/', sso_views.saml_metadata, name='sso_saml_metadata'),
+
+    # OAuth URLs
+    path('sso/oauth/callback/', sso_views.oauth_callback, name='sso_oauth_callback'),
+
+    # Standard Authentication URLs
     path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('password-change/', auth_views.PasswordChangeView.as_view(
