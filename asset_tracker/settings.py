@@ -55,12 +55,17 @@ INSTALLED_APPS = [
     'corsheaders',
     'csp',
 
+    # API Enhancement (Phase 2)
+    'django_filters',
+    'drf_spectacular',
+
     # Local apps
     'accounts',
     'assets',
     'locations',
     'movements',
     'dashboard',
+    'api',  # Phase 2: REST API app
 ]
 
 MIDDLEWARE = [
@@ -430,6 +435,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',  # Phase 2: Advanced filtering
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
@@ -438,6 +444,19 @@ REST_FRAMEWORK = {
     ],
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
     'DATE_FORMAT': '%Y-%m-%d',
+
+    # Phase 2: API Documentation
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
+    # Phase 2: Rate Limiting
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour'
+    }
 }
 
 # Add BrowsableAPIRenderer for development
@@ -480,4 +499,38 @@ SIMPLE_JWT = {
 
 # =============================================================================
 # END OF PHASE 1 CONFIGURATION
+# =============================================================================
+
+# =============================================================================
+# PHASE 2: API ENHANCEMENT CONFIGURATION
+# =============================================================================
+
+# DRF Spectacular Settings (API Documentation)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Asset Movement Tracking System API',
+    'DESCRIPTION': 'Complete REST API for asset management and tracking between Hong Kong and Shenzhen locations. '
+                   'Provides comprehensive CRUD operations for assets, movements, locations, and stock takes.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'filter': True,
+    },
+    'SWAGGER_UI_FAVICON_HREF': '/static/favicon.ico',
+    'REDOC_DIST': 'SIDECAR',
+    'PREPROCESSING_HOOKS': [],
+    'POSTPROCESSING_HOOKS': [],
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'] if not DEBUG else ['rest_framework.permissions.AllowAny'],
+    'SERVERS': [
+        {'url': 'http://localhost:8000', 'description': 'Local Development'},
+        {'url': 'https://asset-tracker.company.com', 'description': 'Production'},
+    ],
+}
+
+# =============================================================================
+# END OF PHASE 2 CONFIGURATION
 # =============================================================================
