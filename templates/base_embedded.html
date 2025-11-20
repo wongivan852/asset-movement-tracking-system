@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+
+{#
+    Embedded Mode Base Template - Phase 3
+
+    This template is used when the application is embedded in an iframe
+    within the Integrated Business Platform.
+
+    Features:
+    - Compact navigation
+    - Custom theming support
+    - Parent window communication
+    - Session synchronization
+#}
+
+{% block extra_css %}
+    <!-- Embedded mode styles -->
+    <link rel="stylesheet" href="{% static 'css/embedded.css' %}">
+
+    {% if custom_theme %}
+    <style>
+        :root {
+            {% if custom_theme.primary_color %}
+            --primary-color: {{ custom_theme.primary_color }};
+            {% endif %}
+            {% if custom_theme.secondary_color %}
+            --secondary-color: {{ custom_theme.secondary_color }};
+            {% endif %}
+            {% if custom_theme.navbar_bg %}
+            --nav-bg: {{ custom_theme.navbar_bg }};
+            {% endif %}
+            {% if custom_theme.body_bg %}
+            --body-bg: {{ custom_theme.body_bg }};
+            {% endif %}
+        }
+    </style>
+    {% endif %}
+
+    {{ block.super }}
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Embedded mode JavaScript -->
+    <script src="{% static 'js/embedded.js' %}"></script>
+
+    <script>
+        // Configure embedded mode
+        if (window.EmbeddedMode) {
+            EmbeddedMode.config.platformOrigin = '{{ platform_origin|default:"*" }}';
+            EmbeddedMode.config.debug = {{ debug_embedded|default:"false" }};
+        }
+    </script>
+
+    {{ block.super }}
+{% endblock %}

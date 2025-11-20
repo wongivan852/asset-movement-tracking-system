@@ -1,0 +1,281 @@
+/**
+ * Embedded Mode Styles - Phase 3
+ *
+ * Custom styles for embedded mode when the application is displayed
+ * within an iframe in the Integrated Business Platform.
+ */
+
+/* CSS Variables for theming - can be overridden by parent platform */
+:root {
+    /* Primary colors */
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #0dcaf0;
+
+    /* Background colors */
+    --body-bg: #ffffff;
+    --card-bg: #ffffff;
+    --navbar-bg: #212529;
+
+    /* Text colors */
+    --text-color: #212529;
+    --text-muted: #6c757d;
+    --link-color: #0d6efd;
+
+    /* Border colors */
+    --border-color: #dee2e6;
+    --border-radius: 0.375rem;
+
+    /* Spacing */
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 3rem;
+
+    /* Font sizes */
+    --font-size-base: 1rem;
+    --font-size-sm: 0.875rem;
+    --font-size-lg: 1.25rem;
+
+    /* Navigation */
+    --nav-height: 56px;
+    --nav-bg: #212529;
+    --nav-link-color: rgba(255, 255, 255, 0.75);
+    --nav-link-hover-color: rgba(255, 255, 255, 1);
+}
+
+/* Embedded mode body adjustments */
+body.embedded-mode {
+    background-color: var(--body-bg);
+    padding: 0;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* Compact navigation for embedded mode */
+body.embedded-mode .navbar {
+    background-color: var(--nav-bg) !important;
+    min-height: var(--nav-height);
+    padding: 0.25rem 1rem;
+}
+
+body.embedded-mode .navbar-brand {
+    font-size: var(--font-size-base);
+    padding: 0.25rem 0;
+}
+
+body.embedded-mode .nav-link {
+    color: var(--nav-link-color) !important;
+    padding: 0.25rem 0.75rem;
+    font-size: var(--font-size-sm);
+}
+
+body.embedded-mode .nav-link:hover {
+    color: var(--nav-link-hover-color) !important;
+}
+
+/* Compact main content */
+body.embedded-mode main {
+    padding: var(--spacing-md);
+    min-height: calc(100vh - var(--nav-height) - 50px);
+}
+
+/* Remove footer in embedded mode (optional) */
+body.embedded-mode footer {
+    display: none;
+}
+
+/* Or make footer minimal */
+body.embedded-mode footer.minimal {
+    background-color: var(--card-bg);
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: var(--font-size-sm);
+}
+
+/* Compact cards */
+body.embedded-mode .card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+}
+
+body.embedded-mode .card-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-base);
+}
+
+body.embedded-mode .card-body {
+    padding: var(--spacing-md);
+}
+
+/* Compact tables */
+body.embedded-mode .table {
+    font-size: var(--font-size-sm);
+}
+
+body.embedded-mode .table th,
+body.embedded-mode .table td {
+    padding: var(--spacing-sm);
+}
+
+/* Compact buttons */
+body.embedded-mode .btn {
+    font-size: var(--font-size-sm);
+    padding: 0.375rem 0.75rem;
+}
+
+body.embedded-mode .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Compact forms */
+body.embedded-mode .form-label {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+body.embedded-mode .form-control,
+body.embedded-mode .form-select {
+    font-size: var(--font-size-sm);
+    padding: 0.375rem 0.75rem;
+}
+
+/* Compact alerts */
+body.embedded-mode .alert {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+/* Breadcrumbs for context */
+body.embedded-mode .breadcrumb {
+    background-color: transparent;
+    padding: var(--spacing-sm) 0;
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-sm);
+}
+
+/* Modal adjustments for embedded mode */
+body.embedded-mode .modal-dialog {
+    margin: 1rem auto;
+}
+
+body.embedded-mode .modal-header {
+    padding: var(--spacing-md);
+}
+
+body.embedded-mode .modal-body {
+    padding: var(--spacing-md);
+}
+
+/* Dashboard stats cards in embedded mode */
+body.embedded-mode .stat-card {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+body.embedded-mode .stat-card .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+body.embedded-mode .stat-card .stat-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Responsive adjustments for small iframes */
+@media (max-width: 768px) {
+    body.embedded-mode .navbar {
+        padding: 0.25rem 0.5rem;
+    }
+
+    body.embedded-mode main {
+        padding: var(--spacing-sm);
+    }
+
+    body.embedded-mode .card-body {
+        padding: var(--spacing-sm);
+    }
+
+    body.embedded-mode .table-responsive {
+        font-size: 0.75rem;
+    }
+}
+
+/* Hide elements in embedded mode */
+body.embedded-mode .hide-embedded {
+    display: none !important;
+}
+
+/* Show only in embedded mode */
+.show-embedded {
+    display: none !important;
+}
+
+body.embedded-mode .show-embedded {
+    display: block !important;
+}
+
+/* Platform integration helpers */
+body.embedded-mode.no-navigation .navbar {
+    display: none !important;
+}
+
+body.embedded-mode.no-navigation main {
+    padding-top: var(--spacing-md);
+    min-height: calc(100vh - 50px);
+}
+
+body.embedded-mode.minimal-chrome {
+    --nav-height: 40px;
+}
+
+body.embedded-mode.minimal-chrome .navbar {
+    min-height: 40px;
+    padding: 0.125rem 0.75rem;
+}
+
+body.embedded-mode.minimal-chrome .navbar-brand {
+    font-size: var(--font-size-sm);
+}
+
+body.embedded-mode.minimal-chrome .nav-link {
+    font-size: 0.8125rem;
+    padding: 0.125rem 0.5rem;
+}
+
+/* Theme override support */
+body[data-theme="dark"] {
+    --body-bg: #1a1a1a;
+    --card-bg: #2d2d2d;
+    --text-color: #e0e0e0;
+    --text-muted: #9e9e9e;
+    --border-color: #404040;
+    --nav-bg: #0d0d0d;
+}
+
+/* Custom scrollbar for embedded mode */
+body.embedded-mode::-webkit-scrollbar {
+    width: 8px;
+}
+
+body.embedded-mode::-webkit-scrollbar-track {
+    background: var(--body-bg);
+}
+
+body.embedded-mode::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+body.embedded-mode::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

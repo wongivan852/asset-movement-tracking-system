@@ -79,6 +79,8 @@ MIDDLEWARE = [
     'csp.middleware.CSPMiddleware',  # Content Security Policy
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',  # Required for django-allauth
+    'asset_tracker.middleware.embedded.EmbeddedModeMiddleware',  # Phase 3: Embedded mode detection
+    'asset_tracker.middleware.embedded.EmbeddedSecurityMiddleware',  # Phase 3: Embedded security
 ]
 
 ROOT_URLCONF = 'asset_tracker.urls'
@@ -533,4 +535,118 @@ SPECTACULAR_SETTINGS = {
 
 # =============================================================================
 # END OF PHASE 2 CONFIGURATION
+# =============================================================================
+
+# =============================================================================
+# PHASE 3: EMBEDDING CONFIGURATION
+# =============================================================================
+
+# Embedded Mode Settings
+EMBEDDED_MODE_ENABLED = True
+
+# Platform URL for embedding and PostMessage security
+PLATFORM_URL = config('PLATFORM_URL', default='https://integrated-platform.company.com')
+
+# Embedded Session Synchronization
+EMBEDDED_SESSION_SYNC_ENABLED = True
+
+# Validate platform session tokens (optional - requires platform API)
+EMBEDDED_VALIDATE_PLATFORM_TOKEN = config('EMBEDDED_VALIDATE_PLATFORM_TOKEN', default=False, cast=bool)
+PLATFORM_TOKEN_VALIDATION_URL = config('PLATFORM_TOKEN_VALIDATION_URL', default='')
+
+# Embedded Theme Synchronization
+EMBEDDED_THEME_SYNC_ENABLED = True
+
+# Default theme for embedded mode
+EMBEDDED_DEFAULT_THEME = {
+    'primary_color': '#0d6efd',
+    'secondary_color': '#6c757d',
+    'navbar_bg': '#212529',
+    'body_bg': '#ffffff',
+}
+
+# Embedded Security Settings
+EMBEDDED_VALIDATE_ORIGIN = not DEBUG  # Validate origin in production only
+
+# Allowed origins for embedded mode (in addition to CORS_ALLOWED_ORIGINS)
+EMBEDDED_ALLOWED_ORIGINS = [
+    config('PLATFORM_URL', default='https://integrated-platform.company.com'),
+]
+
+# Add development origins if DEBUG is True
+if DEBUG:
+    EMBEDDED_ALLOWED_ORIGINS += [
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:8080',
+    ]
+
+# Allow access without referer header (set to False for stricter security)
+EMBEDDED_ALLOW_NO_REFERER = DEBUG
+
+# Permissions Policy for embedded iframes
+# Restricts browser features that can be used in embedded mode
+EMBEDDED_PERMISSIONS_POLICY = {
+    'camera': '()',  # Disable camera
+    'microphone': '()',  # Disable microphone
+    'geolocation': '()',  # Disable geolocation
+    'payment': '()',  # Disable payment APIs
+    'usb': '()',  # Disable USB access
+    'autoplay': "'self'",  # Allow autoplay from same origin
+    'fullscreen': "'self'",  # Allow fullscreen from same origin
+}
+
+# Embedded Navigation Modes
+# Available modes: 'normal', 'minimal', 'no-nav'
+# - normal: Full navigation bar
+# - minimal: Compact navigation bar
+# - no-nav: No navigation bar (platform handles navigation)
+EMBEDDED_DEFAULT_NAV_MODE = 'normal'
+
+# Embedded Content Adjustments
+# Automatically adjust layout for embedded display
+EMBEDDED_AUTO_COMPACT = True  # Use compact layout in embedded mode
+EMBEDDED_HIDE_FOOTER = False  # Hide footer in embedded mode
+EMBEDDED_MINIMAL_CHROME = False  # Use minimal chrome (borders, shadows, etc.)
+
+# Session Cookie Settings for Embedded Mode
+# Required for cross-domain session sharing
+SESSION_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+
+# CSRF Cookie Settings for Embedded Mode
+CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+CSRF_COOKIE_HTTPONLY = False  # Must be False for JavaScript access
+
+# In production, ensure HTTPS is used for embedded mode
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# Trusted origins for CSRF (required for cross-domain embedding)
+CSRF_TRUSTED_ORIGINS = [
+    config('PLATFORM_URL', default='https://integrated-platform.company.com'),
+]
+
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS += [
+        'http://localhost:3000',
+        'http://localhost:8080',
+    ]
+
+# Cache configuration for embedded mode
+# Cache platform token validations and theme configurations
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemBackend',
+        'LOCATION': 'unique-snowflake',
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000
+        }
+    }
+}
+
+# =============================================================================
+# END OF PHASE 3 CONFIGURATION
 # =============================================================================
