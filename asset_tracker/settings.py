@@ -61,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'accounts.business_platform_middleware.BusinessPlatformAuthMiddleware',  # Business Platform integration
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -343,3 +344,42 @@ if SSO_ENABLED:
 
 # WhiteNoise for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# ========================================
+# Business Platform Integration
+# ========================================
+
+# Enable Business Platform shared authentication
+BUSINESS_PLATFORM_ENABLED = config('BUSINESS_PLATFORM_ENABLED', default=False, cast=bool)
+BUSINESS_PLATFORM_URL = config('BUSINESS_PLATFORM_URL', default='http://192.168.0.104:8000')
+BUSINESS_PLATFORM_MODE = config('BUSINESS_PLATFORM_MODE', default='database')  # database or api
+BUSINESS_PLATFORM_REMOTE_VALIDATION = config('BUSINESS_PLATFORM_MODE', default='database') == 'api'
+BUSINESS_PLATFORM_API_KEY = config('BUSINESS_PLATFORM_API_KEY', default='')
+
+# Add Business Platform authentication backend
+if BUSINESS_PLATFORM_ENABLED:
+    if BUSINESS_PLATFORM_MODE == 'database':
+        AUTHENTICATION_BACKENDS.insert(0, 'accounts.business_platform_backend.SharedDatabaseBackend')
+    elif BUSINESS_PLATFORM_MODE == 'api':
+        AUTHENTICATION_BACKENDS.insert(0, 'accounts.business_platform_backend.BusinessPlatformBackend')
+
+# Session sharing configuration for Business Platform
+if BUSINESS_PLATFORM_ENABLED:
+    # Cookie domain for cross-app authentication
+    SESSION_COOKIE_DOMAIN = config('SESSION_COOKIE_DOMAIN', default=None)
+
+    # Session configuration (must match Business Platform)
+    SESSION_COOKIE_AGE = config('SESSION_COOKIE_AGE', default=1209600, cast=int)  # 2 weeks
+    SESSION_SAVE_EVERY_REQUEST = config('SESSION_SAVE_EVERY_REQUEST', default=False, cast=bool)
+
+    # CORS for Business Platform
+    if BUSINESS_PLATFORM_URL not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(BUSINESS_PLATFORM_URL)
+    CORS_ALLOW_CREDENTIALS = True
+
+    # CSRF trusted origins
+    CSRF_TRUSTED_ORIGINS = config(
+        'CSRF_TRUSTED_ORIGINS',
+        default=BUSINESS_PLATFORM_URL,
+        cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+    )
