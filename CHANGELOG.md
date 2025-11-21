@@ -5,6 +5,51 @@ All notable changes to the Asset Management Tracking System will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-11-21
+
+### Added
+- **Business Platform Integration**: Shared Django backend authentication
+  - Seamless integration with existing Business Platform at http://192.168.0.104:8000
+  - Shared database authentication mode (both apps use same PostgreSQL)
+  - Remote API validation mode (validate sessions via API)
+  - Business Platform authentication middleware for automatic session sharing
+  - Users login once on Business Platform, access Asset Management System without re-login
+  - Automatic user synchronization between platforms
+  - Support for same-domain and cross-domain setups
+
+- **Authentication Backends**:
+  - `SharedDatabaseBackend`: For apps sharing same database
+  - `BusinessPlatformBackend`: For API-based session validation
+  - Seamless user provisioning from Business Platform
+
+- **Configuration Options**:
+  - `BUSINESS_PLATFORM_ENABLED`: Enable/disable integration
+  - `BUSINESS_PLATFORM_MODE`: Choose "database" or "api" mode
+  - `BUSINESS_PLATFORM_URL`: URL of Business Platform
+  - `SESSION_COOKIE_DOMAIN`: Share cookies across applications
+  - CORS and CSRF configuration for cross-app authentication
+
+- **Documentation**:
+  - Complete Business Platform Integration Guide (`BUSINESS_PLATFORM_INTEGRATION.md`)
+  - Step-by-step setup instructions for both modes
+  - Troubleshooting guide for common integration issues
+  - Security best practices for shared authentication
+  - Production deployment checklist
+
+### Changed
+- **Middleware**: Added `BusinessPlatformAuthMiddleware` for automatic authentication
+- **Settings**: Extended with Business Platform configuration options
+- **Environment Template**: Added Business Platform settings to `.env.example`
+- **CORS**: Enhanced CORS configuration for cross-origin authentication
+- **CSRF**: Added trusted origins for Business Platform
+
+### Technical
+- Middleware intercepts requests and validates Business Platform sessions
+- Supports both shared database and remote API validation
+- Automatic user creation/update from Business Platform data
+- Session cookie sharing across applications
+- Compatible with existing SSO integration
+
 ## [1.1.0] - 2025-11-20
 
 ### Added
