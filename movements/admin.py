@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Movement, MovementAcknowledgement, StockTake, StockTakeItem
+from .models import Movement, MovementAcknowledgement, StockTake, StockTakeItem, BulkMovement
 
 @admin.register(Movement)
 class MovementAdmin(admin.ModelAdmin):
@@ -27,3 +27,16 @@ class StockTakeItemAdmin(admin.ModelAdmin):
     list_display = ['stock_take', 'asset', 'status', 'condition_found', 'verified_by']
     list_filter = ['status', 'condition_found']
     search_fields = ['asset__asset_id', 'stock_take__stock_take_id']
+
+@admin.register(BulkMovement)
+class BulkMovementAdmin(admin.ModelAdmin):
+    list_display = ['tracking_number', 'asset_count', 'from_location', 'to_location', 'status', 'priority', 'initiated_by', 'expected_arrival_date']
+    list_filter = ['status', 'priority', 'from_location', 'to_location']
+    search_fields = ['tracking_number', 'reason']
+    readonly_fields = ['tracking_number', 'created_at', 'updated_at']
+    date_hierarchy = 'expected_arrival_date'
+    filter_horizontal = ['assets']
+    
+    def asset_count(self, obj):
+        return obj.asset_count
+    asset_count.short_description = 'Assets'

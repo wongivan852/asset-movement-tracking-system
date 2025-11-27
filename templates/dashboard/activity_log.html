@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}Activity Log - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-history me-2"></i>Activity Log
+            </h2>
+            <a href="{% url 'dashboard:index' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="user" class="form-label">User</label>
+                        <select name="user" id="user" class="form-select">
+                            <option value="">All Users</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if request.GET.user == user.id|stringformat:"i" %}selected{% endif %}>
+                                {{ user.get_full_name|default:user.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="action_type" class="form-label">Action Type</label>
+                        <select name="action_type" id="action_type" class="form-select">
+                            <option value="">All Actions</option>
+                            {% for value, label in action_types %}
+                            <option value="{{ value }}" {% if request.GET.action_type == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_from" class="form-label">From Date</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_to" class="form-label">To Date</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i>Filter
+                        </button>
+                        <a href="{% url 'dashboard:activity_log' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Activity Log Table -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Recent Activities
+                    {% if page_obj %}
+                    <span class="badge bg-light text-primary ms-2">{{ page_obj.paginator.count }} records</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if activities %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="160">Date/Time</th>
+                                <th width="150">User</th>
+                                <th width="150">Action</th>
+                                <th>Description</th>
+                                <th width="120">IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in activities %}
+                            <tr>
+                                <td>
+                                    <small>{{ activity.created_at|date:"Y-m-d H:i:s" }}</small>
+                                </td>
+                                <td>
+                                    {% if activity.user %}
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ activity.user.get_full_name|default:activity.user.username }}
+                                    {% else %}
+                                    <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if activity.action_type == 'login' %}
+                                    <span class="badge bg-success"><i class="fas fa-sign-in-alt me-1"></i>Login</span>
+                                    {% elif activity.action_type == 'logout' %}
+                                    <span class="badge bg-secondary"><i class="fas fa-sign-out-alt me-1"></i>Logout</span>
+                                    {% elif activity.action_type == 'asset_create' %}
+                                    <span class="badge bg-primary"><i class="fas fa-plus me-1"></i>Asset Created</span>
+                                    {% elif activity.action_type == 'asset_update' %}
+                                    <span class="badge bg-info"><i class="fas fa-edit me-1"></i>Asset Updated</span>
+                                    {% elif activity.action_type == 'asset_delete' %}
+                                    <span class="badge bg-danger"><i class="fas fa-trash me-1"></i>Asset Deleted</span>
+                                    {% elif activity.action_type == 'movement_create' %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-truck me-1"></i>Movement Created</span>
+                                    {% elif activity.action_type == 'movement_update' %}
+                                    <span class="badge bg-info"><i class="fas fa-edit me-1"></i>Movement Updated</span>
+                                    {% elif activity.action_type == 'movement_approve' %}
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Movement Approved</span>
+                                    {% elif activity.action_type == 'bulk_movement_create' %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-boxes me-1"></i>Bulk Movement</span>
+                                    {% elif activity.action_type == 'bulk_movement_update' %}
+                                    <span class="badge bg-info"><i class="fas fa-edit me-1"></i>Bulk Updated</span>
+                                    {% elif activity.action_type == 'bulk_movement_approve' %}
+                                    <span class="badge bg-success"><i class="fas fa-check-double me-1"></i>Bulk Approved</span>
+                                    {% elif activity.action_type == 'stock_take_create' %}
+                                    <span class="badge bg-purple" style="background-color: #6f42c1;"><i class="fas fa-clipboard-list me-1"></i>Stock Take</span>
+                                    {% elif activity.action_type == 'stock_take_update' %}
+                                    <span class="badge bg-purple" style="background-color: #6f42c1;"><i class="fas fa-clipboard-check me-1"></i>Stock Updated</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ activity.get_action_type_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ activity.description }}
+                                    {% if activity.target_id %}
+                                    <br><small class="text-muted">ID: {{ activity.target_id }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ activity.ip_address|default:"-" }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Activity log pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action_type %}&action_type={{ request.GET.action_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action_type %}&action_type={{ request.GET.action_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action_type %}&action_type={{ request.GET.action_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action_type %}&action_type={{ request.GET.action_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h5>No activity logs found</h5>
+                    <p class="text-muted">Activity logs will appear here as users perform actions in the system.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

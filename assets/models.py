@@ -35,7 +35,7 @@ class Asset(models.Model):
     # Basic Information
     asset_id = models.CharField(max_length=50, unique=True, db_index=True)
     name = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(blank=True, default="")
     category = models.ForeignKey(AssetCategory, on_delete=models.PROTECT, related_name='assets')
     
     # Physical Details
@@ -76,6 +76,14 @@ class Asset(models.Model):
         null=True,
         blank=True,
         related_name='assigned_assets'
+    )
+    primary_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='primary_assets',
+        help_text='The primary user of this asset'
     )
     
     # Metadata

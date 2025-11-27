@@ -25,4 +25,11 @@ urlpatterns = [
     path('users/create/', views.CreateUserView.as_view(), name='create_user'),
     path('users/<int:pk>/edit/', views.EditUserView.as_view(), name='edit_user'),
     path('users/<int:pk>/delete/', views.DeleteUserView.as_view(), name='delete_user'),
+    
+    # SSO API Endpoints
+    path('api/sso/token/', views.sso_token_obtain, name='sso_token_obtain'),
+    path('api/sso/refresh/', views.sso_token_refresh, name='sso_token_refresh'),
+    path('api/sso/validate/', views.sso_token_validate, name='sso_token_validate'),
+    path('api/sso/user/info/', views.sso_user_info, name='sso_user_info'),
+    path('api/sso/users/list/', views.sso_user_list, name='sso_user_list'),
 ]

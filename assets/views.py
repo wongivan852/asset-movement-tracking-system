@@ -1,13 +1,27 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.db.models import Q
+from django.utils import timezone
 
 from .models import Asset, AssetCategory, AssetRemark
+from .forms import AssetForm, AssetUpdateForm, AssetCategoryForm
 from locations.models import Location
+from accounts.models import ActivityLog
+
+
+class AssetAdminRequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to Asset Administrators only"""
+
+    def test_func(self):
+        return self.request.user.is_asset_admin
+
+    def handle_no_permission(self):
+        messages.error(self.request, 'You do not have permission to perform this action. Only Asset Administrators can create, edit, or delete assets.')
+        return redirect('assets:list')
 
 
 class AssetListView(LoginRequiredMixin, ListView):
@@ -18,7 +32,7 @@ class AssetListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         queryset = Asset.objects.select_related(
-            'category', 'current_location', 'responsible_person'
+            'category', 'current_location', 'primary_user', 'responsible_person'
         ).order_by('asset_id')
         
         search = self.request.GET.get('search')
@@ -32,15 +46,15 @@ class AssetListView(LoginRequiredMixin, ListView):
         category = self.request.GET.get('category')
         if category:
             queryset = queryset.filter(category_id=category)
-            
+        
         location = self.request.GET.get('location')
         if location:
             queryset = queryset.filter(current_location_id=location)
-            
+        
         status = self.request.GET.get('status')
         if status:
             queryset = queryset.filter(status=status)
-            
+        
         return queryset
     
     def get_context_data(self, **kwargs):
@@ -58,6 +72,7 @@ class AssetDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['today'] = timezone.now().date()
         context['recent_movements'] = self.object.movements.select_related(
             'from_location', 'to_location', 'initiated_by'
         ).order_by('-created_at')[:10]
@@ -67,44 +82,75 @@ class AssetDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class AssetCreateView(LoginRequiredMixin, CreateView):
+class AssetCreateView(LoginRequiredMixin, AssetAdminRequiredMixin, CreateView):
     model = Asset
+    form_class = AssetForm
     template_name = 'assets/form.html'
-    fields = ['asset_id', 'name', 'description', 'category', 'serial_number', 
-              'model_number', 'manufacturer', 'purchase_date', 'purchase_value', 
-              'current_value', 'current_location', 'responsible_person', 'condition']
-    
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
+        response = super().form_valid(form)
+
+        # Log the activity
+        ActivityLog.log(
+            user=self.request.user,
+            action_type='asset_create',
+            description=f'Created asset {self.object.asset_id} - {self.object.name}',
+            request=self.request,
+            target_model='Asset',
+            target_id=self.object.asset_id
+        )
+
         messages.success(self.request, f'Asset {form.instance.asset_id} created successfully!')
-        return super().form_valid(form)
-    
+        return response
+
     def get_success_url(self):
         return reverse_lazy('assets:detail', kwargs={'pk': self.object.pk})
 
 
-class AssetUpdateView(LoginRequiredMixin, UpdateView):
+class AssetUpdateView(LoginRequiredMixin, AssetAdminRequiredMixin, UpdateView):
     model = Asset
+    form_class = AssetUpdateForm
     template_name = 'assets/form.html'
-    fields = ['name', 'description', 'category', 'serial_number', 'model_number', 
-              'manufacturer', 'purchase_date', 'purchase_value', 'current_value', 
-              'current_location', 'responsible_person', 'condition', 'status', 'notes']
-    
+
     def form_valid(self, form):
+        response = super().form_valid(form)
+
+        # Log the activity
+        ActivityLog.log(
+            user=self.request.user,
+            action_type='asset_update',
+            description=f'Updated asset {self.object.asset_id} - {self.object.name}',
+            request=self.request,
+            target_model='Asset',
+            target_id=self.object.asset_id
+        )
+
         messages.success(self.request, f'Asset {form.instance.asset_id} updated successfully!')
-        return super().form_valid(form)
-    
+        return response
+
     def get_success_url(self):
         return reverse_lazy('assets:detail', kwargs={'pk': self.object.pk})
 
 
-class AssetDeleteView(LoginRequiredMixin, DeleteView):
+class AssetDeleteView(LoginRequiredMixin, AssetAdminRequiredMixin, DeleteView):
     model = Asset
     template_name = 'assets/delete.html'
     success_url = reverse_lazy('assets:list')
-    
+
     def delete(self, request, *args, **kwargs):
         asset = self.get_object()
+
+        # Log the activity before deletion
+        ActivityLog.log(
+            user=request.user,
+            action_type='asset_delete',
+            description=f'Deleted asset {asset.asset_id} - {asset.name}',
+            request=request,
+            target_model='Asset',
+            target_id=asset.asset_id
+        )
+
         messages.success(request, f'Asset {asset.asset_id} deleted successfully!')
         return super().delete(request, *args, **kwargs)
 
@@ -117,8 +163,8 @@ class CategoryListView(LoginRequiredMixin, ListView):
 
 class CategoryCreateView(LoginRequiredMixin, CreateView):
     model = AssetCategory
+    form_class = AssetCategoryForm
     template_name = 'assets/category_form.html'
-    fields = ['name', 'description']
     success_url = reverse_lazy('assets:category_list')
     
     def form_valid(self, form):

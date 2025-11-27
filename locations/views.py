@@ -29,7 +29,7 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
         context['assets'] = self.object.assets.select_related(
             'category', 'responsible_person'
         ).order_by('asset_id')
-        context['recent_movements'] = self.object.movements_to.select_related(
+        context['recent_movements'] = self.object.incoming_movements.select_related(
             'asset', 'from_location', 'initiated_by'
         ).order_by('-created_at')[:10]
         return context
@@ -38,11 +38,10 @@ class LocationDetailView(LoginRequiredMixin, DetailView):
 class LocationCreateView(LoginRequiredMixin, CreateView):
     model = Location
     template_name = 'locations/form.html'
-    fields = ['name', 'type', 'address', 'contact_person', 'contact_phone', 
-              'contact_email', 'manager', 'description']
+    fields = ['name', 'code', 'address', 'city', 'country', 'contact_phone', 
+              'contact_email', 'responsible_person']
     
     def form_valid(self, form):
-        form.instance.created_by = self.request.user
         messages.success(self.request, f'Location {form.instance.name} created successfully!')
         return super().form_valid(form)
     
@@ -53,8 +52,8 @@ class LocationCreateView(LoginRequiredMixin, CreateView):
 class LocationUpdateView(LoginRequiredMixin, UpdateView):
     model = Location
     template_name = 'locations/form.html'
-    fields = ['name', 'type', 'address', 'contact_person', 'contact_phone', 
-              'contact_email', 'manager', 'description', 'is_active']
+    fields = ['name', 'code', 'address', 'city', 'country', 'contact_phone', 
+              'contact_email', 'responsible_person', 'is_active']
     
     def form_valid(self, form):
         messages.success(self.request, f'Location {form.instance.name} updated successfully!')

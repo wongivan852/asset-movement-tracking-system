@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+
+{% block title %}Movement Details - {{ movement.tracking_number }} - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-truck me-2"></i>Movement Details</h2>
+            <div>
+                <a href="{% url 'movements:list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to List
+                </a>
+                {% if movement.status == 'pending' or movement.status == 'in_transit' %}
+                    <a href="{% url 'movements:update' movement.pk %}" class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Main Details -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Movement Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Tracking Number:</strong>
+                                <p class="text-primary fs-4 mb-0">{{ movement.tracking_number }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Status:</strong>
+                                <p class="mb-0">
+                                    {% if movement.status == 'pending' %}
+                                        <span class="badge bg-warning fs-6">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'in_transit' %}
+                                        <span class="badge bg-primary fs-6">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'delivered' %}
+                                        <span class="badge bg-success fs-6">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'completed' %}
+                                        <span class="badge bg-success fs-6">{{ movement.get_status_display }}</span>
+                                    {% elif movement.status == 'cancelled' %}
+                                        <span class="badge bg-danger fs-6">{{ movement.get_status_display }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <strong><i class="fas fa-box me-2"></i>Asset:</strong>
+                                <p class="mb-0">
+                                    <a href="{% url 'assets:detail' movement.asset.pk %}">
+                                        {{ movement.asset.asset_id }}
+                                    </a>
+                                </p>
+                                <p class="text-muted mb-0">{{ movement.asset.name }}</p>
+                                <small class="text-muted">{{ movement.asset.category.name }}</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <strong><i class="fas fa-flag me-2"></i>Priority:</strong>
+                                <p class="mb-0">
+                                    {% if movement.priority == 'urgent' %}
+                                        <span class="badge bg-danger">{{ movement.get_priority_display }}</span>
+                                    {% elif movement.priority == 'high' %}
+                                        <span class="badge bg-warning">{{ movement.get_priority_display }}</span>
+                                    {% elif movement.priority == 'normal' %}
+                                        <span class="badge bg-info">{{ movement.get_priority_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ movement.get_priority_display }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <strong><i class="fas fa-map-marker-alt me-2 text-secondary"></i>From Location:</strong>
+                                <p class="mb-0">{{ movement.from_location.name }}</p>
+                                <small class="text-muted">{{ movement.from_location.address }}</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <strong><i class="fas fa-map-marker-alt me-2 text-info"></i>To Location:</strong>
+                                <p class="mb-0">{{ movement.to_location.name }}</p>
+                                <small class="text-muted">{{ movement.to_location.address }}</small>
+                            </div>
+                        </div>
+
+                        {% if movement.reason %}
+                        <div class="mb-3">
+                            <strong><i class="fas fa-comment me-2"></i>Reason:</strong>
+                            <p class="mb-0">{{ movement.reason }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if movement.notes %}
+                        <div class="mb-3">
+                            <strong><i class="fas fa-sticky-note me-2"></i>Notes:</strong>
+                            <p class="mb-0">{{ movement.notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Timeline / History -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Movement Timeline</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">Movement Created</h6>
+                                    <p class="text-muted mb-0">{{ movement.created_at|date:"M d, Y H:i" }}</p>
+                                    <small class="text-muted">by {{ movement.initiated_by.get_full_name|default:movement.initiated_by.username }}</small>
+                                </div>
+                            </div>
+
+                            {% if movement.status != 'pending' %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-info"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">In Transit</h6>
+                                    <p class="text-muted mb-0">Asset shipped from {{ movement.from_location.name }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if movement.status == 'delivered' or movement.status == 'completed' %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-success"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">Delivered</h6>
+                                    <p class="text-muted mb-0">Asset arrived at {{ movement.to_location.name }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if acknowledgement %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-success"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">Acknowledged</h6>
+                                    <p class="text-muted mb-0">{{ acknowledgement.acknowledged_at|date:"M d, Y H:i" }}</p>
+                                    <small class="text-muted">by {{ acknowledgement.acknowledged_by.get_full_name|default:acknowledgement.acknowledged_by.username }}</small>
+                                    {% if acknowledgement.notes %}
+                                    <p class="mt-2 mb-0"><strong>Notes:</strong> {{ acknowledgement.notes }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if movement.status == 'cancelled' %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-danger"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">Cancelled</h6>
+                                    <p class="text-muted mb-0">Movement was cancelled</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Actions -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if movement.status == 'pending' %}
+                            <a href="{% url 'movements:cancel' movement.pk %}" class="btn btn-danger w-100 mb-2">
+                                <i class="fas fa-times-circle me-1"></i>Cancel Movement
+                            </a>
+                        {% endif %}
+                        
+                        {% if movement.status == 'delivered' %}
+                            <a href="{% url 'movements:acknowledge' movement.pk %}" class="btn btn-success w-100 mb-2">
+                                <i class="fas fa-check-circle me-1"></i>Acknowledge Receipt
+                            </a>
+                        {% endif %}
+
+                        <a href="{% url 'movements:list' %}" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-list me-1"></i>All Movements
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Quick Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-6">Created:</dt>
+                            <dd class="col-sm-6">{{ movement.created_at|date:"M d, Y" }}</dd>
+                            
+                            <dt class="col-sm-6">Expected:</dt>
+                            <dd class="col-sm-6">
+                                {% if movement.expected_arrival_date %}
+                                    {{ movement.expected_arrival_date|date:"M d, Y" }}
+                                {% else %}
+                                    <span class="text-muted">Not set</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-6">Duration:</dt>
+                            <dd class="col-sm-6">{{ movement.created_at|timesince }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+    }
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -23px;
+        top: 10px;
+        bottom: -10px;
+        width: 2px;
+        background: #dee2e6;
+    }
+    .timeline-item:last-child::before {
+        display: none;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: -30px;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 0 0 2px #dee2e6;
+    }
+    .timeline-content {
+        padding-left: 10px;
+    }
+    dl dd {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

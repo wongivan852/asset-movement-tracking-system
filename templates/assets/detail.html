@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ asset.asset_id }} - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2><i class="fas fa-box me-2"></i>Asset Details</h2>
+            <div>
+                {% if user.is_asset_admin %}
+                <a href="{% url 'assets:update' asset.pk %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                {% endif %}
+                {% if user.is_asset_operator %}
+                <a href="{% url 'movements:bulk_create' %}" class="btn btn-success">
+                    <i class="fas fa-truck"></i> Move Asset
+                </a>
+                {% endif %}
+                <a href="{% url 'assets:list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Main Information -->
+            <div class="col-md-8">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Basic Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="30%">Asset ID:</th>
+                                <td><strong class="text-primary">{{ asset.asset_id }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Name:</th>
+                                <td>{{ asset.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Category:</th>
+                                <td>
+                                    <span class="badge bg-info">{{ asset.category.name }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    <span class="badge 
+                                        {% if asset.status == 'active' %}bg-success
+                                        {% elif asset.status == 'maintenance' %}bg-warning
+                                        {% elif asset.status == 'retired' %}bg-secondary
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ asset.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Condition:</th>
+                                <td>
+                                    <span class="badge 
+                                        {% if asset.condition == 'excellent' %}bg-success
+                                        {% elif asset.condition == 'good' %}bg-primary
+                                        {% elif asset.condition == 'fair' %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ asset.get_condition_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if asset.description %}
+                            <tr>
+                                <th>Description:</th>
+                                <td>{{ asset.description }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Technical Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless">
+                            {% if asset.serial_number %}
+                            <tr>
+                                <th width="30%">Serial Number:</th>
+                                <td><code>{{ asset.serial_number }}</code></td>
+                            </tr>
+                            {% endif %}
+                            {% if asset.model_number %}
+                            <tr>
+                                <th>Model Number:</th>
+                                <td>{{ asset.model_number }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if asset.manufacturer %}
+                            <tr>
+                                <th>Manufacturer:</th>
+                                <td>{{ asset.manufacturer }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
+                {% if asset.notes %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Notes</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ asset.notes|linebreaks }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Side Panel -->
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Financial Information</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if asset.purchase_date %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Purchase Date</small>
+                            <strong>{{ asset.purchase_date|date:"F d, Y" }}</strong>
+                        </div>
+                        {% endif %}
+                        {% if asset.purchase_value %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Purchase Value</small>
+                            <strong>${{ asset.purchase_value|floatformat:2 }}</strong>
+                        </div>
+                        {% endif %}
+                        {% if asset.current_value %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Current Value</small>
+                            <strong>${{ asset.current_value|floatformat:2 }}</strong>
+                        </div>
+                        {% endif %}
+                        {% if asset.warranty_expiry %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Warranty Expiry</small>
+                            <strong>{{ asset.warranty_expiry|date:"F d, Y" }}</strong>
+                            {% if asset.warranty_expiry < today %}
+                            <span class="badge bg-danger ms-2">Expired</span>
+                            {% else %}
+                            <span class="badge bg-success ms-2">Active</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Location & Responsibility</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if asset.current_location %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Current Location</small>
+                            <strong>
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ asset.current_location.name }}
+                            </strong>
+                        </div>
+                        {% endif %}
+                        {% if asset.primary_user %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Primary User</small>
+                            <strong>
+                                <i class="fas fa-user-check me-1"></i>
+                                {{ asset.primary_user.get_full_name|default:asset.primary_user.username }}
+                            </strong>
+                        </div>
+                        {% endif %}
+                        {% if asset.responsible_person %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Responsible Person</small>
+                            <strong>
+                                <i class="fas fa-user me-1"></i>
+                                {{ asset.responsible_person.get_full_name|default:asset.responsible_person.username }}
+                            </strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">System Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Created</small>
+                            <strong>{{ asset.created_at|date:"F d, Y g:i A" }}</strong>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Last Updated</small>
+                            <strong>{{ asset.updated_at|date:"F d, Y g:i A" }}</strong>
+                        </div>
+                        {% if asset.created_by %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Created By</small>
+                            <strong>{{ asset.created_by.get_full_name }}</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

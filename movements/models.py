@@ -238,3 +238,137 @@ class StockTakeItem(models.Model):
     
     def __str__(self):
         return f"{self.stock_take.stock_take_id} - {self.asset.asset_id}"
+
+
+class BulkMovement(models.Model):
+    """Represents a single movement operation for multiple assets"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('normal', 'Normal'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    
+    # Unique tracking number for the bulk movement
+    tracking_number = models.CharField(max_length=100, unique=True, db_index=True)
+    
+    # Movement Details
+    from_location = models.ForeignKey(
+        'locations.Location',
+        on_delete=models.PROTECT,
+        related_name='bulk_outgoing_movements'
+    )
+    to_location = models.ForeignKey(
+        'locations.Location',
+        on_delete=models.PROTECT,
+        related_name='bulk_incoming_movements'
+    )
+    
+    # Assets involved in this bulk movement
+    assets = models.ManyToManyField('assets.Asset', related_name='bulk_movements')
+    
+    # Personnel
+    initiated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='initiated_bulk_movements'
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_bulk_movements'
+    )
+    
+    # Dates and Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    expected_arrival_date = models.DateTimeField()
+    actual_departure_date = models.DateTimeField(null=True, blank=True)
+    actual_arrival_date = models.DateTimeField(null=True, blank=True)
+    
+    # Additional Information
+    reason = models.CharField(max_length=200)
+    notes = models.TextField(blank=True, null=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='normal')
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['tracking_number']),
+            models.Index(fields=['status']),
+            models.Index(fields=['expected_arrival_date']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        # Check if status is changing to completed or delivered
+        is_new = self.pk is None
+        old_status = None
+        
+        if not is_new:
+            try:
+                old_instance = BulkMovement.objects.get(pk=self.pk)
+                old_status = old_instance.status
+            except BulkMovement.DoesNotExist:
+                pass
+        
+        if not self.tracking_number:
+            self.tracking_number = self.generate_tracking_number()
+        
+        super().save(*args, **kwargs)
+        
+        # Update asset locations when status changes to completed or delivered
+        if not is_new and old_status != self.status and self.status in ['completed', 'delivered']:
+            self.update_asset_locations()
+    
+    def update_asset_locations(self):
+        """Update all asset locations to the destination when movement is completed"""
+        for asset in self.assets.all():
+            asset.current_location = self.to_location
+            asset.save()
+    
+    def generate_tracking_number(self):
+        """Generate a unique tracking number for bulk movement"""
+        prefix = f"BM{timezone.now().year}"
+        unique_id = str(uuid.uuid4())[:8].upper()
+        return f"{prefix}-{unique_id}"
+    
+    def __str__(self):
+        asset_count = self.assets.count()
+        return f"{self.tracking_number}: {asset_count} assets ({self.from_location} → {self.to_location})"
+    
+    @property
+    def asset_count(self):
+        """Return the number of assets in this bulk movement"""
+        return self.assets.count()
+    
+    @property
+    def is_overdue(self):
+        """Check if the bulk movement is overdue"""
+        if self.status in ['delivered', 'completed']:
+            return False
+        return timezone.now() > self.expected_arrival_date
+    
+    @property
+    def days_until_arrival(self):
+        """Calculate days until expected arrival"""
+        if self.status in ['delivered', 'completed']:
+            return 0
+        delta = self.expected_arrival_date - timezone.now()
+        return delta.days
+    
+    def get_asset_list(self):
+        """Return comma-separated list of asset IDs"""
+        return ", ".join(self.assets.values_list('asset_id', flat=True))

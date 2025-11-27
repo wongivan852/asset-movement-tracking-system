@@ -149,11 +149,21 @@
                                 </div>
                             {% endif %}
                         </div>
+                        <!-- Warranty Expiry -->
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.warranty_expiry.id_for_label }}" class="form-label">Warranty Expiry</label>
+                            {{ form.warranty_expiry }}
+                            {% if form.warranty_expiry.errors %}
+                                <div class="text-danger small">
+                                    {{ form.warranty_expiry.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    
+
                     <div class="row">
                         <!-- Current Location -->
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="{{ form.current_location.id_for_label }}" class="form-label">
                                 Current Location <span class="text-danger">*</span>
                             </label>
@@ -164,11 +174,24 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <!-- Primary User -->
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.primary_user.id_for_label }}" class="form-label">Primary User</label>
+                            {{ form.primary_user }}
+                            <small class="text-muted">The main user of this asset</small>
+                            {% if form.primary_user.errors %}
+                                <div class="text-danger small">
+                                    {{ form.primary_user.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <!-- Responsible Person -->
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="{{ form.responsible_person.id_for_label }}" class="form-label">Responsible Person</label>
                             {{ form.responsible_person }}
+                            <small class="text-muted">Person accountable for the asset</small>
                             {% if form.responsible_person.errors %}
                                 <div class="text-danger small">
                                     {{ form.responsible_person.errors.0 }}

@@ -60,11 +60,12 @@
                                 <i class="fas fa-cog me-1"></i>Admin
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'accounts:user_list' %}">Users</a></li>
-                                <li><a class="dropdown-item" href="{% url 'assets:category_list' %}">Categories</a></li>
-                                <li><a class="dropdown-item" href="{% url 'dashboard:reports' %}">Reports</a></li>
+                                <li><a class="dropdown-item" href="{% url 'accounts:user_list' %}"><i class="fas fa-users me-2"></i>Users</a></li>
+                                <li><a class="dropdown-item" href="{% url 'assets:category_list' %}"><i class="fas fa-tags me-2"></i>Categories</a></li>
+                                <li><a class="dropdown-item" href="{% url 'dashboard:reports' %}"><i class="fas fa-chart-bar me-2"></i>Reports</a></li>
+                                <li><a class="dropdown-item" href="{% url 'dashboard:activity_log' %}"><i class="fas fa-history me-2"></i>Activity Log</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="/admin/">Django Admin</a></li>
+                                <li><a class="dropdown-item" href="/admin/"><i class="fas fa-cog me-2"></i>Django Admin</a></li>
                             </ul>
                         </li>
                         {% endif %}
@@ -108,7 +109,7 @@
     <div class="container mt-3">
         {% for message in messages %}
         <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
+            {% if 'safe' in message.tags %}{{ message|safe }}{% else %}{{ message }}{% endif %}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% endfor %}

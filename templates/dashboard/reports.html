@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4"><i class="fas fa-chart-bar me-2"></i>Reports & Analytics</h2>
+
+        <!-- Asset Summary -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-box me-2"></i>Assets by Category</h5>
+            </div>
+            <div class="card-body">
+                {% if assets_by_category %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Asset Count</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in assets_by_category %}
+                            <tr>
+                                <td>{{ category.name }}</td>
+                                <td>{{ category.asset_count }}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ category.asset_count|default:0 }}%;" 
+                                             aria-valuenow="{{ category.asset_count }}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            {{ category.asset_count|default:0 }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No asset categories found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Assets by Location -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Assets by Location</h5>
+            </div>
+            <div class="card-body">
+                {% if assets_by_location %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Location</th>
+                                <th>Asset Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for location in assets_by_location %}
+                            <tr>
+                                <td>{{ location.name }}</td>
+                                <td><span class="badge bg-info">{{ location.asset_count }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No locations found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Movement Statistics -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-truck me-2"></i>Movement Statistics</h5>
+            </div>
+            <div class="card-body">
+                {% if movement_stats %}
+                <div class="row text-center">
+                    <div class="col-md-2">
+                        <div class="stat-card">
+                            <h3 class="text-primary">{{ movement_stats.total_movements }}</h3>
+                            <p class="text-muted mb-0">Total Movements</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-card">
+                            <h3 class="text-warning">{{ movement_stats.pending_movements }}</h3>
+                            <p class="text-muted mb-0">Pending</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-card">
+                            <h3 class="text-info">{{ movement_stats.in_transit_movements }}</h3>
+                            <p class="text-muted mb-0">In Transit</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-card">
+                            <h3 class="text-success">{{ movement_stats.completed_movements }}</h3>
+                            <p class="text-muted mb-0">Completed</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-card">
+                            <h3 class="text-danger">{{ movement_stats.cancelled_movements }}</h3>
+                            <p class="text-muted mb-0">Cancelled</p>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted">No movement statistics available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-download me-2"></i>Export Data</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6 class="mb-3">Assets</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'dashboard:export_data' %}?type=assets&format=csv" class="btn btn-outline-primary">
+                                <i class="fas fa-file-csv me-2"></i>Export as CSV
+                            </a>
+                            <a href="{% url 'dashboard:export_data' %}?type=assets&format=pdf" class="btn btn-outline-danger">
+                                <i class="fas fa-file-pdf me-2"></i>Export as PDF
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="mb-3">Movements</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'dashboard:export_data' %}?type=movements&format=csv" class="btn btn-outline-success">
+                                <i class="fas fa-file-csv me-2"></i>Export as CSV
+                            </a>
+                            <a href="{% url 'dashboard:export_data' %}?type=movements&format=pdf" class="btn btn-outline-danger">
+                                <i class="fas fa-file-pdf me-2"></i>Export as PDF
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="mb-3">Stock Takes</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'dashboard:export_data' %}?type=stock_takes&format=csv" class="btn btn-outline-info">
+                                <i class="fas fa-file-csv me-2"></i>Export as CSV
+                            </a>
+                            <a href="{% url 'dashboard:export_data' %}?type=stock_takes&format=pdf" class="btn btn-outline-danger">
+                                <i class="fas fa-file-pdf me-2"></i>Export as PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    margin-bottom: 15px;
+}
+</style>
+{% endblock %}

@@ -1,13 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.db.models import Q
 
-from .models import Movement, StockTake, MovementAcknowledgement
+from .models import Movement, StockTake, MovementAcknowledgement, BulkMovement
 from assets.models import Asset
+from accounts.models import ActivityLog
 
 
 class MovementListView(LoginRequiredMixin, ListView):
@@ -193,3 +194,195 @@ class TrackMovementAPIView(LoginRequiredMixin, DetailView):
             'expected_arrival': movement.expected_arrival_date.isoformat() if movement.expected_arrival_date else None,
         }
         return JsonResponse(data)
+
+
+class BulkMovementCreateView(LoginRequiredMixin, TemplateView):
+    """Create multiple movement records in one transaction"""
+    template_name = 'movements/bulk_create.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from locations.models import Location
+        context['locations'] = Location.objects.all().order_by('name')
+        context['assets'] = Asset.objects.select_related(
+            'category', 'current_location'
+        ).order_by('asset_id')
+
+        # Add reminder for users
+        messages.info(
+            self.request,
+            '<strong>Reminder:</strong> After creating this movement, it will be in <span class="badge bg-warning">Pending</span> status. '
+            'A different user (Movement Approver or Administrator) must approve and complete the movement. '
+            '<strong>You cannot approve your own movement request.</strong>',
+            extra_tags='safe'
+        )
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        from django.db import transaction
+        from datetime import datetime
+        
+        # Get form data
+        asset_ids = request.POST.getlist('assets')
+        from_location_id = request.POST.get('from_location')
+        to_location_id = request.POST.get('to_location')
+        reason = request.POST.get('reason')
+        notes = request.POST.get('notes', '')
+        expected_arrival = request.POST.get('expected_arrival_date')
+        priority = request.POST.get('priority', 'normal')
+        
+        # Validate
+        if not asset_ids:
+            messages.error(request, 'Please select at least one asset to move.')
+            return redirect('movements:bulk_create')
+        
+        if from_location_id == to_location_id:
+            messages.error(request, 'From Location and To Location must be different.')
+            return redirect('movements:bulk_create')
+        
+        # Create single bulk movement with multiple assets
+        try:
+            with transaction.atomic():
+                from locations.models import Location
+                from_location = Location.objects.get(id=from_location_id)
+                to_location = Location.objects.get(id=to_location_id)
+                
+                # Create the bulk movement record
+                bulk_movement = BulkMovement.objects.create(
+                    from_location=from_location,
+                    to_location=to_location,
+                    reason=reason,
+                    notes=notes,
+                    expected_arrival_date=expected_arrival,
+                    priority=priority,
+                    initiated_by=request.user,
+                    status='pending'
+                )
+                
+                # Add all selected assets to the bulk movement
+                assets = Asset.objects.filter(id__in=asset_ids)
+                bulk_movement.assets.set(assets)
+                
+                # Log the activity
+                ActivityLog.log(
+                    user=request.user,
+                    action_type='bulk_movement_create',
+                    description=f'Created bulk movement {bulk_movement.tracking_number} with {len(asset_ids)} asset(s) from {from_location.name} to {to_location.name}',
+                    request=request,
+                    target_model='BulkMovement',
+                    target_id=bulk_movement.tracking_number
+                )
+
+                messages.success(
+                    request,
+                    f'Successfully created bulk movement {bulk_movement.tracking_number} with {len(asset_ids)} asset(s)!'
+                )
+                return redirect('movements:bulk_detail', pk=bulk_movement.pk)
+                
+        except Exception as e:
+            messages.error(request, f'Error creating movements: {str(e)}')
+            return redirect('movements:bulk_create')
+
+
+class BulkMovementListView(LoginRequiredMixin, ListView):
+    """List all bulk movements"""
+    model = BulkMovement
+    template_name = 'movements/bulk_list.html'
+    context_object_name = 'bulk_movements'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = BulkMovement.objects.select_related(
+            'from_location', 'to_location', 'initiated_by'
+        ).prefetch_related('assets').order_by('-created_at')
+        
+        status = self.request.GET.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['statuses'] = BulkMovement.STATUS_CHOICES
+        return context
+
+
+class BulkMovementDetailView(LoginRequiredMixin, DetailView):
+    """Detail view for a single bulk movement"""
+    model = BulkMovement
+    template_name = 'movements/bulk_detail.html'
+    context_object_name = 'bulk_movement'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['assets'] = self.object.assets.select_related('category', 'current_location').order_by('asset_id')
+        return context
+
+
+class BulkMovementUpdateView(LoginRequiredMixin, UpdateView):
+    """Update bulk movement status and details"""
+    model = BulkMovement
+    template_name = 'movements/bulk_form.html'
+    fields = ['status', 'reason', 'notes', 'expected_arrival_date', 'priority']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bulk_movement = self.get_object()
+
+        # Check if current user is the initiator
+        is_initiator = self.request.user == bulk_movement.initiated_by
+        context['is_initiator'] = is_initiator
+        context['can_approve'] = not is_initiator or self.request.user.is_superuser
+
+        if is_initiator and not self.request.user.is_superuser:
+            messages.warning(
+                self.request,
+                '<strong>Restriction:</strong> You cannot approve this movement because you created it. '
+                'A different user (Movement Approver or Administrator) must change the status to Completed or Delivered.',
+                extra_tags='safe'
+            )
+        return context
+
+    def form_valid(self, form):
+        bulk_movement = self.get_object()
+        new_status = form.cleaned_data.get('status')
+        old_status = bulk_movement.status
+
+        # Check if user is trying to approve their own movement
+        is_initiator = self.request.user == bulk_movement.initiated_by
+        is_approving = new_status in ['completed', 'delivered', 'in_transit'] and old_status == 'pending'
+
+        if is_initiator and is_approving and not self.request.user.is_superuser:
+            messages.error(
+                self.request,
+                'You cannot approve your own movement request. A different user must approve this movement.'
+            )
+            return redirect('movements:bulk_detail', pk=bulk_movement.pk)
+
+        # Record who approved the movement and log the activity
+        if new_status in ['completed', 'delivered'] and old_status != new_status:
+            form.instance.approved_by = self.request.user
+            ActivityLog.log(
+                user=self.request.user,
+                action_type='bulk_movement_approve',
+                description=f'Approved bulk movement {bulk_movement.tracking_number} - Status changed from {old_status} to {new_status}',
+                request=self.request,
+                target_model='BulkMovement',
+                target_id=bulk_movement.tracking_number
+            )
+        elif new_status != old_status:
+            ActivityLog.log(
+                user=self.request.user,
+                action_type='bulk_movement_update',
+                description=f'Updated bulk movement {bulk_movement.tracking_number} - Status changed from {old_status} to {new_status}',
+                request=self.request,
+                target_model='BulkMovement',
+                target_id=bulk_movement.tracking_number
+            )
+
+        messages.success(self.request, 'Bulk movement updated successfully!')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('movements:bulk_detail', kwargs={'pk': self.object.pk})

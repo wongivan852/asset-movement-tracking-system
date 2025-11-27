@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Location - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    {% if object %}Edit Location{% else %}Create New Location{% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'locations:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>
+                            {% if object %}Update Location{% else %}Create Location{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Text -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Location Guidelines</h6>
+                <ul class="mb-0">
+                    <li><strong>Name:</strong> Full name of the location (e.g., "Hong Kong Office", "Shenzhen Warehouse")</li>
+                    <li><strong>Code:</strong> Short unique code for the location (e.g., "HK", "SZ", "GZ")</li>
+                    <li><strong>Address:</strong> Complete physical address of the location</li>
+                    <li><strong>City & Country:</strong> Location's city and country for easy identification</li>
+                    <li><strong>Contact Information:</strong> Phone and email for location inquiries</li>
+                    <li><strong>Responsible Person:</strong> Person managing this location</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

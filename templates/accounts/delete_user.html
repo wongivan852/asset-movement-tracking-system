@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Delete User - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4><i class="bi bi-exclamation-triangle"></i> Confirm User Deactivation</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Are you sure you want to deactivate this user?</p>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Username:</strong> {{ object.username }}<br>
+                        <strong>Name:</strong> {{ object.get_full_name|default:"-" }}<br>
+                        <strong>Email:</strong> {{ object.email|default:"-" }}<br>
+                        <strong>Role:</strong> {{ object.get_role_display }}
+                    </div>
+
+                    <p class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Note: This action will deactivate the user account. The user will not be deleted from the database.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Yes, Deactivate User
+                            </button>
+                            <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

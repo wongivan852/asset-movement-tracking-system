@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Bulk Movement - Asset Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .asset-checkbox {
+        cursor: pointer;
+    }
+    .asset-row:hover {
+        background-color: #f8f9fa;
+    }
+    .asset-row.selected {
+        background-color: #e3f2fd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-truck me-2"></i>Create Bulk Movement
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Reminder Alert -->
+                <div class="alert alert-info mb-4">
+                    <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Important Reminder</h6>
+                    <hr>
+                    <ul class="mb-0">
+                        <li>After creating this movement, it will be in <span class="badge bg-warning text-dark">Pending</span> status.</li>
+                        <li>A <strong>different user</strong> (Movement Approver or Administrator) must approve and complete the movement.</li>
+                        <li><strong>You cannot approve your own movement request.</strong></li>
+                        <li>Status options: <span class="badge bg-success">Completed</span> for internal transfers, <span class="badge bg-primary">Delivered</span> for client deliveries.</li>
+                    </ul>
+                </div>
+
+                <form method="post" id="bulkMovementForm">
+                    {% csrf_token %}
+
+                    <!-- Movement Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="from_location" class="form-label">From Location <span class="text-danger">*</span></label>
+                            <select name="from_location" id="from_location" class="form-select" required>
+                                <option value="">Select location</option>
+                                {% for location in locations %}
+                                <option value="{{ location.id }}">{{ location.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="to_location" class="form-label">To Location <span class="text-danger">*</span></label>
+                            <select name="to_location" id="to_location" class="form-select" required>
+                                <option value="">Select location</option>
+                                {% for location in locations %}
+                                <option value="{{ location.id }}">{{ location.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="reason" class="form-label">Reason <span class="text-danger">*</span></label>
+                            <input type="text" name="reason" id="reason" class="form-control" placeholder="e.g., Relocation, Maintenance" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="expected_arrival_date" class="form-label">Expected Arrival <span class="text-danger">*</span></label>
+                            <input type="datetime-local" name="expected_arrival_date" id="expected_arrival_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="priority" class="form-label">Priority</label>
+                            <select name="priority" id="priority" class="form-select">
+                                <option value="normal">Normal</option>
+                                <option value="low">Low</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Additional notes (optional)"></textarea>
+                    </div>
+
+                    <!-- Asset Selection -->
+                    <hr>
+                    <h5 class="mb-3">
+                        <i class="fas fa-box me-2"></i>Select Assets to Move
+                        <span class="badge bg-primary ms-2" id="selectedCount">0 selected</span>
+                    </h5>
+
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" id="assetSearch" class="form-control" placeholder="Search assets by ID, name, or serial number...">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="selectAll">
+                            <i class="fas fa-check-square me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAll">
+                            <i class="fas fa-square me-1"></i>Deselect All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" id="filterByLocation">
+                            <i class="fas fa-filter me-1"></i>Filter by From Location
+                        </button>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th width="50">
+                                        <input type="checkbox" id="selectAllCheckbox" class="form-check-input">
+                                    </th>
+                                    <th>Asset ID</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Current Location</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetTableBody">
+                                {% for asset in assets %}
+                                <tr class="asset-row" data-asset-id="{{ asset.id }}" data-location-id="{{ asset.current_location.id }}">
+                                    <td>
+                                        <input type="checkbox" name="assets" value="{{ asset.id }}" class="form-check-input asset-checkbox">
+                                    </td>
+                                    <td><strong>{{ asset.asset_id }}</strong></td>
+                                    <td>{{ asset.name }}</td>
+                                    <td><span class="badge bg-info">{{ asset.category.name }}</span></td>
+                                    <td>{{ asset.current_location.name }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if asset.status == 'available' %}bg-success
+                                            {% elif asset.status == 'in_use' %}bg-primary
+                                            {% elif asset.status == 'maintenance' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ asset.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'movements:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-truck me-1"></i>Create Movements (<span id="submitCount">0</span> assets)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('bulkMovementForm');
+    const checkboxes = document.querySelectorAll('.asset-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const selectedCount = document.getElementById('selectedCount');
+    const submitCount = document.getElementById('submitCount');
+    const assetSearch = document.getElementById('assetSearch');
+    const fromLocationSelect = document.getElementById('from_location');
+    const toLocationSelect = document.getElementById('to_location');
+
+    function updateCount() {
+        const count = document.querySelectorAll('.asset-checkbox:checked').length;
+        selectedCount.textContent = count + ' selected';
+        submitCount.textContent = count;
+        
+        // Update row highlighting
+        checkboxes.forEach(cb => {
+            const row = cb.closest('tr');
+            if (cb.checked) {
+                row.classList.add('selected');
+            } else {
+                row.classList.remove('selected');
+            }
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateCount);
+    });
+
+    selectAllCheckbox.addEventListener('change', function() {
+        const visibleCheckboxes = Array.from(checkboxes).filter(cb => {
+            return cb.closest('tr').style.display !== 'none';
+        });
+        visibleCheckboxes.forEach(cb => {
+            cb.checked = this.checked;
+        });
+        updateCount();
+    });
+
+    document.getElementById('selectAll').addEventListener('click', function() {
+        checkboxes.forEach(cb => {
+            if (cb.closest('tr').style.display !== 'none') {
+                cb.checked = true;
+            }
+        });
+        selectAllCheckbox.checked = true;
+        updateCount();
+    });
+
+    document.getElementById('deselectAll').addEventListener('click', function() {
+        checkboxes.forEach(cb => cb.checked = false);
+        selectAllCheckbox.checked = false;
+        updateCount();
+    });
+
+    document.getElementById('filterByLocation').addEventListener('click', function() {
+        const fromLocationId = fromLocationSelect.value;
+        if (!fromLocationId) {
+            alert('Please select a "From Location" first');
+            return;
+        }
+        
+        checkboxes.forEach(cb => {
+            const row = cb.closest('tr');
+            const rowLocationId = row.dataset.locationId;
+            if (rowLocationId === fromLocationId && row.style.display !== 'none') {
+                cb.checked = true;
+            }
+        });
+        updateCount();
+    });
+
+    // Search functionality
+    assetSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.asset-row');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        updateCount();
+    });
+
+    // Validate locations are different
+    form.addEventListener('submit', function(e) {
+        const checkedCount = document.querySelectorAll('.asset-checkbox:checked').length;
+        
+        if (checkedCount === 0) {
+            e.preventDefault();
+            alert('Please select at least one asset to move');
+            return;
+        }
+        
+        if (fromLocationSelect.value === toLocationSelect.value) {
+            e.preventDefault();
+            alert('From Location and To Location must be different');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

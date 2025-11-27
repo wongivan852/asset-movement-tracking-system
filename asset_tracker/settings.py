@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'accounts.sso_middleware.SSOAutoLoginMiddleware',  # SSO auto-login (must be after AuthenticationMiddleware)
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -111,6 +112,24 @@ else:
         }
     }
 
+
+# Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'accounts.auth_backends.BusinessPlatformAuthBackend',  # SSO authentication
+    'django.contrib.auth.backends.ModelBackend',  # Fallback to local auth
+]
+
+# Business Platform SSO Configuration
+BUSINESS_PLATFORM_URL = config('BUSINESS_PLATFORM_URL', default='http://localhost:8001')
+BUSINESS_PLATFORM_API_KEY = config('BUSINESS_PLATFORM_API_KEY', default='')
+BUSINESS_PLATFORM_CLIENT_ID = config('BUSINESS_PLATFORM_CLIENT_ID', default='')
+BUSINESS_PLATFORM_CLIENT_SECRET = config('BUSINESS_PLATFORM_CLIENT_SECRET', default='')
+
+# JWT Token Configuration
+SSO_SECRET_KEY = config('SSO_SECRET_KEY', default=SECRET_KEY)
+SSO_ALGORITHM = config('SSO_ALGORITHM', default='HS256')
+SSO_TOKEN_LIFETIME = config('SSO_TOKEN_LIFETIME', default=3600, cast=int)  # 1 hour
+SSO_REFRESH_LIFETIME = config('SSO_REFRESH_LIFETIME', default=86400, cast=int)  # 24 hours
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

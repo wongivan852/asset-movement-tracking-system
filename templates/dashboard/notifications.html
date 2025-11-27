@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-bell me-2"></i>Notifications</h2>
+            <div>
+                <button class="btn btn-outline-primary btn-sm" id="markAllRead">
+                    <i class="fas fa-check-double me-1"></i>Mark All as Read
+                </button>
+            </div>
+        </div>
+
+        <!-- Notifications List -->
+        <div class="card">
+            <div class="card-body">
+                {% if notifications %}
+                <div class="list-group list-group-flush">
+                    {% for notification in notifications %}
+                    <div class="list-group-item {% if notification.is_unread %}bg-light{% endif %}">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    {% if notification.type == 'movement_overdue' %}
+                                    <span class="badge bg-danger me-2">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Overdue
+                                    </span>
+                                    {% elif notification.type == 'movement_arriving' %}
+                                    <span class="badge bg-warning me-2">
+                                        <i class="fas fa-clock me-1"></i>Arriving Soon
+                                    </span>
+                                    {% elif notification.type == 'warranty_expiring' %}
+                                    <span class="badge bg-info me-2">
+                                        <i class="fas fa-certificate me-1"></i>Warranty
+                                    </span>
+                                    {% elif notification.type == 'stock_discrepancy' %}
+                                    <span class="badge bg-warning me-2">
+                                        <i class="fas fa-box me-1"></i>Stock Issue
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary me-2">
+                                        <i class="fas fa-info-circle me-1"></i>Info
+                                    </span>
+                                    {% endif %}
+                                    <h6 class="mb-0">{{ notification.title }}</h6>
+                                </div>
+                                <p class="mb-2 text-muted">{{ notification.message }}</p>
+                                {% if notification.link %}
+                                <a href="{{ notification.link }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i>View Details
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div class="text-end ms-3">
+                                <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                                {% if notification.is_unread %}
+                                <br>
+                                <button class="btn btn-sm btn-link text-primary p-0 mt-1" onclick="markAsRead({{ notification.id }})">
+                                    Mark as read
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                    <h5>No Notifications</h5>
+                    <p class="text-muted">You're all caught up! No notifications at this time.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function markAsRead(notificationId) {
+    // Placeholder for AJAX call to mark notification as read
+    fetch(`/notifications/${notificationId}/mark-read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+document.getElementById('markAllRead')?.addEventListener('click', function() {
+    if (confirm('Mark all notifications as read?')) {
+        fetch('/notifications/mark-all-read/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+});
+</script>
+{% endblock %}

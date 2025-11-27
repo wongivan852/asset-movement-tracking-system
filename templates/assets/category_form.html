@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Category - Asset Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-tag me-2"></i>
+                    {% if object %}Edit Category{% else %}Create New Category{% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'assets:category_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>
+                            {% if object %}Update Category{% else %}Create Category{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Text -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Category Guidelines</h6>
+                <ul class="mb-0">
+                    <li>Choose a clear, descriptive name for the category</li>
+                    <li>Add a detailed description to help users understand what assets belong here</li>
+                    <li>Examples: IT Equipment, Office Furniture, Electronics, Tools & Equipment, Vehicles</li>
+                    <li>Categories help organize and filter assets for easier management</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -9,4 +9,5 @@ urlpatterns = [
     path('notifications/', views.NotificationListView.as_view(), name='notifications'),
     path('reports/', views.ReportsView.as_view(), name='reports'),
     path('reports/export/', views.ExportDataView.as_view(), name='export_data'),
+    path('activity-log/', views.ActivityLogView.as_view(), name='activity_log'),
 ]
